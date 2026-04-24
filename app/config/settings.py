@@ -19,5 +19,12 @@ class Settings(BaseSettings):
         description="Database connection URL for PostgreSQL.",
     )
 
+    huggingface_token: str = Field(
+        alias="HUGGINGFACE_TOKEN",
+        min_length=1,
+        description="Token da Hugging Face.",
+        optional=True,
+    )
+
 
 settings = Settings()
