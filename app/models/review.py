@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
+from pydantic import BaseModel
 from sqlmodel import Field, SQLModel
-
-from app.utils.enums import ReviewClassification
 
 
 class ReviewBase(SQLModel):
@@ -19,11 +18,19 @@ class ReviewBase(SQLModel):
         description="Customer name that authored the review.",
     )
     review_date: datetime = Field(
-        description="Date and time when the review was created."
+        description="Date and time when the review was created.",
+        index=True,
     )
     review_text: str = Field(min_length=1, description="Raw review text content.")
-    classification: ReviewClassification = Field(
-        description="Categorization for review sentiment."
+
+
+class Review(ReviewBase, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+
+    classification: str = Field(
+        min_length=1,
+        description="Categorization for review sentiment.",
+        index=True,
     )
 
 
@@ -31,22 +38,20 @@ class ReviewCreate(ReviewBase):
     """Payload model used to create a new review record."""
 
 
-class Review(ReviewBase, table=True):
-    """SQLModel table that stores customer reviews."""
-
-    id: Optional[int] = Field(default=None, primary_key=True)
-
-
 class ReviewRead(ReviewBase):
     """Response model for a single persisted review."""
 
     id: int
+    classification: str = Field(
+        min_length=1,
+        description="Categorization for review sentiment.",
+    )
 
 
 class ReviewReportItem(SQLModel):
     """Aggregated quantity grouped by review classification."""
 
-    classification: ReviewClassification
+    classification: str
     total: int
 
 
@@ -57,3 +62,9 @@ class ReviewReport(SQLModel):
     end_date: Optional[datetime] = None
     total_reviews: int
     by_classification: list[ReviewReportItem]
+
+
+class ErrorResponse(BaseModel):
+    """Response model for error responses."""
+
+    detail: str

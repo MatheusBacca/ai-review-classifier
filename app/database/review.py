@@ -8,7 +8,6 @@ from typing import Optional
 from sqlmodel import Session, col, func, select
 
 from app.models import Review, ReviewCreate
-from app.utils.enums import ReviewClassification
 
 
 class ReviewRepository:
@@ -64,7 +63,7 @@ class ReviewRepository:
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-    ) -> tuple[int, list[tuple[ReviewClassification, int]]]:
+    ) -> tuple[int, list[tuple[str, int]]]:
         """Return total and grouped counts by review classification."""
         total_statement = self._apply_period_filters(
             select(func.count(col(Review.id))),

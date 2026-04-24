@@ -11,6 +11,7 @@ from sqlmodel import Session
 from app.database import get_session
 from app.database.review import ReviewRepository
 from app.models import ReviewCreate, ReviewRead, ReviewReport
+from app.models.review import ErrorResponse
 from app.service.review import ReviewNotFoundError, ReviewService
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -82,7 +83,18 @@ def reviews_report(
 
 
 @router.get(
-    "/{review_id}", response_model=ReviewRead, summary="Get review by id"
+    "/{review_id}", response_model=ReviewRead, summary="Get review by id", responses={
+        status.HTTP_404_NOT_FOUND: {
+            "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Review not found",
+                    }
+                }
+            },
+        }
+    }
 )
 def get_review_by_id(
     review_id: int,

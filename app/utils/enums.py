@@ -6,6 +6,6 @@ from enum import Enum
 class ReviewClassification(str, Enum):
     """Allowed values for the review classification field."""
 
-    POSITIVE = "positive"
-    NEUTRAL = "neutral"
-    NEGATIVE = "negative"
+    positiva = "positiva"
+    neutra = "neutra"
+    negativa = "negativa"

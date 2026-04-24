@@ -1,5 +1,6 @@
 """Application configuration loaded from environment variables."""
 
+from typing import Optional
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,11 +20,9 @@ class Settings(BaseSettings):
         description="Database connection URL for PostgreSQL.",
     )
 
-    huggingface_token: str = Field(
+    huggingface_token: Optional[str] = Field(
         alias="HUGGINGFACE_TOKEN",
-        min_length=1,
         description="Token da Hugging Face.",
-        optional=True,
     )
 
 

@@ -6,7 +6,8 @@ from datetime import datetime
 from typing import Optional
 
 from app.database.review import ReviewRepository
-from app.models import ReviewCreate, ReviewRead, ReviewReport, ReviewReportItem
+from app.models import Review, ReviewCreate, ReviewRead, ReviewReport, ReviewReportItem
+from app.service.transformer import review_classifier
 
 
 class ReviewNotFoundError(Exception):
@@ -21,8 +22,15 @@ class ReviewService:
         self.review_repository = review_repository
 
     def create_review(self, payload: ReviewCreate) -> ReviewRead:
-        """Create a review and return the API response schema."""
-        review = self.review_repository.create(payload)
+        classificacao = review_classifier.classify(payload.review_text)
+
+        review_db = Review(
+            **payload.model_dump(),
+            classification=classificacao,
+        )
+
+        review = self.review_repository.create(review_db)
+
         return ReviewRead.model_validate(review)
 
     def list_reviews(
