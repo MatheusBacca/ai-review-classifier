@@ -208,3 +208,6 @@ tests/test_data.json
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Application logs
+logs/

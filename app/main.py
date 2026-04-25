@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.config import configure_logging
 from app.database import create_db_and_tables
+from app.middleware.logging import RequestLoggingMiddleware
 from app.routes.reviews import router as reviews_router
 
 
@@ -40,12 +42,14 @@ def create_app() -> FastAPI:
         >>> app.title
         'AI Review Classifier API'
     """
+    configure_logging()
     application = FastAPI(
         title="AI Review Classifier API",
         version="1.0.0",
         description="API for storing and reporting customer review classifications.",
         lifespan=lifespan,
     )
+    application.add_middleware(RequestLoggingMiddleware)
     application.include_router(reviews_router)
     return application
 
