@@ -201,6 +201,9 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
+# Local test data overrides
+tests/test_data.json
+
 # Marimo
 marimo/_static/
 marimo/_lsp/

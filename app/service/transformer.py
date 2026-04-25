@@ -1,6 +1,7 @@
 """Review text classification service powered by Hugging Face transformers."""
 
-from transformers import pipeline
+from functools import lru_cache
+from typing import Any, Callable, Optional
 
 from app.config import settings
 from app.utils.enums import ReviewClassification
@@ -9,7 +10,13 @@ from app.utils.enums import ReviewClassification
 class ReviewClassifier:
     """Classify review text into normalized sentiment labels."""
 
-    def __init__(self) -> None:
+    def __init__(self, classifier: Optional[Callable[[str], list[dict[str, Any]]]] = None) -> None:
+        if classifier:
+            self._classifier = classifier
+            return
+
+        from transformers import pipeline
+
         self._classifier = pipeline(
             "sentiment-analysis",
             model="nlptown/bert-base-multilingual-uncased-sentiment",
@@ -27,4 +34,7 @@ class ReviewClassifier:
         return ReviewClassification.positiva
 
 
-review_classifier = ReviewClassifier()
+@lru_cache
+def get_review_classifier() -> ReviewClassifier:
+    """Return a cached classifier instance to avoid repeated model loads."""
+    return ReviewClassifier()

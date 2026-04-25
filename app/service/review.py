@@ -7,7 +7,7 @@ from typing import Optional
 
 from app.database.review import ReviewRepository
 from app.models import Review, ReviewCreate, ReviewRead, ReviewReport, ReviewReportItem
-from app.service.transformer import review_classifier
+from app.service.transformer import get_review_classifier
 
 
 class ReviewNotFoundError(Exception):
@@ -22,7 +22,7 @@ class ReviewService:
         self.review_repository = review_repository
 
     def create_review(self, payload: ReviewCreate) -> ReviewRead:
-        classificacao = review_classifier.classify(payload.review_text)
+        classificacao = get_review_classifier().classify(payload.review_text)
 
         review_db = Review(
             **payload.model_dump(),

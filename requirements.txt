@@ -34,6 +34,7 @@ psycopg-binary==3.3.3
 pydantic==2.13.3
 pydantic-settings==2.14.0
 pydantic_core==2.46.3
+pytest==9.0.3
 Pygments==2.20.0
 python-dotenv==1.2.2
 pytokens==0.4.1
