@@ -1,7 +1,22 @@
 # AI Review Classifier
 
-Servidor Python para cadastro e consulta de reviews usando **FastAPI**, **Uvicorn**,
-**Pydantic**, **SQLModel** e **PostgreSQL**.
+API REST para cadastro de reviews de clientes, classificacao automatica de sentimento e
+consulta analitica com filtros por periodo. O fluxo principal recebe o texto da review,
+classifica o sentimento e persiste os dados para consultas e relatorios.
+
+## Overview
+
+### Stack completa
+
+- **Linguagem:** Python 3.11+
+- **API/Web:** FastAPI, Starlette, Uvicorn
+- **Modelagem/validacao:** Pydantic v2, SQLModel
+- **Banco de dados:** PostgreSQL (producao) e SQLite em memoria (testes)
+- **ORM/SQL:** SQLAlchemy 2
+- **NLP/IA:** Hugging Face Transformers (modelo multilingual sentiment)
+- **Testes:** Pytest, FastAPI TestClient, fixtures/mocks com monkeypatch
+- **Qualidade de codigo:** Black
+- **Config:** pydantic-settings com variaveis em `.env`
 
 ## Requisitos
 
@@ -21,8 +36,10 @@ cd ai-review-classifier
 
 ```bash
 python -m venv .venv
+
 # Windows (PowerShell)
 .venv\Scripts\Activate.ps1
+
 # Linux/macOS
 source .venv/bin/activate
 ```
@@ -89,6 +106,7 @@ Estrutura modular atual:
 - `app/config/`: configurações e objeto único `settings`
 - `app/models/`: modelos SQLModel/Pydantic
 - `app/utils/`: utilitários compartilhados (ex.: enums)
+- `tests/`: testes unitários com Pytest
 
 ## Estrutura de dados
 
@@ -103,7 +121,11 @@ Tabela de reviews:
 ## Endpoints
 
 ### `POST /reviews`
-Cria uma review.
+Cria uma review e calcula automaticamente a classificacao de sentimento.
+Regras de validacao principais:
+
+- `customer_name` obrigatorio e nao pode conter apenas espacos;
+- `review_text` obrigatorio e nao pode ser vazio/nem somente espacos.
 
 Exemplo de body:
 
@@ -111,8 +133,7 @@ Exemplo de body:
 {
   "customer_name": "Daiane Babicz",
   "review_date": "2026-04-23T14:30:00",
-  "review_text": "Atendimento excelente e entrega rápida.",
-  "classification": "positiva"
+  "review_text": "Atendimento excelente e entrega rápida."
 }
 ```
 
@@ -159,7 +180,8 @@ Os testes foram organizados para validar as principais funcionalidades do servic
 - Inserção de review no banco (SQLite em memoria para nao depender do Postgres local);
 - Leitura com filtros de periodo usados nas APIs;
 - Relatório agregado por classificação;
-- Análise de sentimento do Transformer com pipeline mockado.
+- Análise de sentimento do Transformer com pipeline mockado;
+- Validacoes reprovadas de API (payload invalido, datas invalidas e recurso nao encontrado).
 
 ### Executar testes
 

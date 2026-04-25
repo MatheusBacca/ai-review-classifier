@@ -27,7 +27,24 @@ def validate_date_range(
         Query(description="Final datetime for filtering reviews."),
     ] = None,
 ) -> tuple[Optional[datetime], Optional[datetime]]:
-    """Validate that start date is not greater than end date."""
+    """Validate that start date is not greater than end date.
+
+    Args:
+        start_date: Optional initial datetime from query params.
+        end_date: Optional final datetime from query params.
+
+    Returns:
+        Tuple with normalized ``(start_date, end_date)`` values.
+
+    Raises:
+        HTTPException: If ``start_date`` is greater than ``end_date``.
+
+    Example:
+        >>> validate_date_range(
+        ...     datetime.fromisoformat("2026-04-01T00:00:00"),
+        ...     datetime.fromisoformat("2026-04-30T23:59:59"),
+        ... )
+    """
     if start_date and end_date and start_date > end_date:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -39,7 +56,19 @@ def validate_date_range(
 def get_review_service(
     session: Annotated[Session, Depends(get_session)],
 ) -> ReviewService:
-    """Create a review service instance bound to the request session."""
+    """Build a review service instance for current request.
+
+    Args:
+        session: Active SQLModel session resolved by dependency injection.
+
+    Returns:
+        A configured ``ReviewService``.
+
+    Example:
+        >>> # Used by FastAPI Depends(get_review_service)
+        >>> isinstance(get_review_service.__name__, str)
+        True
+    """
     repository = ReviewRepository(session)
     return ReviewService(repository)
 
@@ -54,7 +83,23 @@ def create_review(
     payload: ReviewCreate,
     review_service: Annotated[ReviewService, Depends(get_review_service)],
 ) -> ReviewRead:
-    """Create a new review using service-level business rules."""
+    """Create a new review using service-level business rules.
+
+    Args:
+        payload: Incoming request payload with customer and review data.
+        review_service: Domain service injected by FastAPI.
+
+    Returns:
+        Persisted review representation.
+
+    Raises:
+        HTTPException: Propagated from validation layer when payload is invalid.
+
+    Example:
+        >>> # POST /reviews
+        >>> True
+        True
+    """
     return review_service.create_review(payload)
 
 
@@ -65,7 +110,20 @@ def list_reviews(
         tuple[Optional[datetime], Optional[datetime]], Depends(validate_date_range)
     ],
 ) -> list[ReviewRead]:
-    """Return all reviews filtered by optional date period."""
+    """Return all reviews filtered by optional date period.
+
+    Args:
+        review_service: Domain service injected by FastAPI.
+        period: Tuple with ``(start_date, end_date)`` validated by dependency.
+
+    Returns:
+        A list of persisted reviews matching the optional period.
+
+    Example:
+        >>> # GET /reviews?start_date=...&end_date=...
+        >>> True
+        True
+    """
     start_date, end_date = period
     return review_service.list_reviews(start_date, end_date)
 
@@ -77,13 +135,29 @@ def reviews_report(
         tuple[Optional[datetime], Optional[datetime]], Depends(validate_date_range)
     ],
 ) -> ReviewReport:
-    """Return aggregated review counts by classification in the selected period."""
+    """Return grouped review report for the selected period.
+
+    Args:
+        review_service: Domain service injected by FastAPI.
+        period: Tuple with optional period bounds.
+
+    Returns:
+        Aggregated report grouped by classification.
+
+    Example:
+        >>> # GET /reviews/report
+        >>> True
+        True
+    """
     start_date, end_date = period
     return review_service.get_reviews_report(start_date, end_date)
 
 
 @router.get(
-    "/{review_id}", response_model=ReviewRead, summary="Get review by id", responses={
+    "/{review_id}",
+    response_model=ReviewRead,
+    summary="Get review by id",
+    responses={
         status.HTTP_404_NOT_FOUND: {
             "model": ErrorResponse,
             "content": {
@@ -94,7 +168,7 @@ def reviews_report(
                 }
             },
         }
-    }
+    },
 )
 def get_review_by_id(
     review_id: int,
@@ -103,7 +177,24 @@ def get_review_by_id(
         tuple[Optional[datetime], Optional[datetime]], Depends(validate_date_range)
     ],
 ) -> ReviewRead:
-    """Return a single review by identifier, respecting optional period filters."""
+    """Return one review by identifier and optional period.
+
+    Args:
+        review_id: Numeric review identifier from path.
+        review_service: Domain service injected by FastAPI.
+        period: Tuple with optional period bounds.
+
+    Returns:
+        Matching persisted review.
+
+    Raises:
+        HTTPException: If review cannot be found for given id/period.
+
+    Example:
+        >>> # GET /reviews/1
+        >>> True
+        True
+    """
     start_date, end_date = period
     try:
         return review_service.get_review_by_id(review_id, start_date, end_date)

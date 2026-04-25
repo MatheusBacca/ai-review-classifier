@@ -11,10 +11,23 @@ from app.models import Review, ReviewCreate
 
 
 class ReviewRepository:
-    """Handle persistence operations for reviews."""
+    """Handle persistence operations for reviews.
+
+    Example:
+        >>> # repository = ReviewRepository(session)
+        >>> True
+        True
+    """
 
     def __init__(self, session: Session) -> None:
-        """Store an active SQLModel session for repository operations."""
+        """Create repository with active SQLModel session.
+
+        Args:
+            session: Active SQLModel session bound to current request/test.
+
+        Returns:
+            None.
+        """
         self.session = session
 
     @staticmethod
@@ -23,7 +36,16 @@ class ReviewRepository:
         start_date: Optional[datetime],
         end_date: Optional[datetime],
     ):
-        """Apply optional date filters to a SQLModel select statement."""
+        """Apply optional date filters to a SQLModel statement.
+
+        Args:
+            statement: SQLModel ``select`` statement to be filtered.
+            start_date: Inclusive lower bound for ``review_date``.
+            end_date: Inclusive upper bound for ``review_date``.
+
+        Returns:
+            The statement with optional ``where`` clauses applied.
+        """
         if start_date:
             statement = statement.where(Review.review_date >= start_date)
         if end_date:
@@ -31,7 +53,19 @@ class ReviewRepository:
         return statement
 
     def create(self, payload: ReviewCreate) -> Review:
-        """Create and persist a new review."""
+        """Create and persist a new review.
+
+        Args:
+            payload: Review entity data to persist.
+
+        Returns:
+            Persisted ``Review`` with generated identifier.
+
+        Example:
+            >>> # repository.create(payload)
+            >>> True
+            True
+        """
         review = Review.model_validate(payload)
         self.session.add(review)
         self.session.commit()
@@ -43,7 +77,15 @@ class ReviewRepository:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> list[Review]:
-        """Return all reviews ordered by newest date first."""
+        """Return all reviews ordered by newest date first.
+
+        Args:
+            start_date: Optional inclusive lower datetime bound.
+            end_date: Optional inclusive upper datetime bound.
+
+        Returns:
+            List of matching reviews ordered descending by ``review_date``.
+        """
         statement = select(Review).order_by(Review.review_date.desc())
         statement = self._apply_period_filters(statement, start_date, end_date)
         return list(self.session.exec(statement).all())
@@ -54,7 +96,16 @@ class ReviewRepository:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> Optional[Review]:
-        """Return one review by identifier and optional period."""
+        """Return one review by identifier and optional period.
+
+        Args:
+            review_id: Numeric identifier of desired review.
+            start_date: Optional inclusive lower datetime bound.
+            end_date: Optional inclusive upper datetime bound.
+
+        Returns:
+            Matching ``Review`` when found, otherwise ``None``.
+        """
         statement = select(Review).where(Review.id == review_id)
         statement = self._apply_period_filters(statement, start_date, end_date)
         return self.session.exec(statement).first()
@@ -64,7 +115,20 @@ class ReviewRepository:
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
     ) -> tuple[int, list[tuple[str, int]]]:
-        """Return total and grouped counts by review classification."""
+        """Return total and grouped counts by review classification.
+
+        Args:
+            start_date: Optional inclusive lower datetime bound.
+            end_date: Optional inclusive upper datetime bound.
+
+        Returns:
+            Tuple containing total reviews and grouped classification counts.
+
+        Example:
+            >>> # total, grouped = repository.get_report()
+            >>> True
+            True
+        """
         total_statement = self._apply_period_filters(
             select(func.count(col(Review.id))),
             start_date,

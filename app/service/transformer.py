@@ -8,9 +8,25 @@ from app.utils.enums import ReviewClassification
 
 
 class ReviewClassifier:
-    """Classify review text into normalized sentiment labels."""
+    """Classify review text into normalized sentiment labels.
 
-    def __init__(self, classifier: Optional[Callable[[str], list[dict[str, Any]]]] = None) -> None:
+    Example:
+        >>> classifier = ReviewClassifier(classifier=lambda _text: [{"label": "5 stars"}])
+        >>> classifier.classify("Excelente")
+        <ReviewClassification.positiva: 'positiva'>
+    """
+
+    def __init__(
+        self, classifier: Optional[Callable[[str], list[dict[str, Any]]]] = None
+    ) -> None:
+        """Create a sentiment classifier.
+
+        Args:
+            classifier: Optional callable used in tests to bypass model loading.
+
+        Returns:
+            None.
+        """
         if classifier:
             self._classifier = classifier
             return
@@ -24,6 +40,18 @@ class ReviewClassifier:
         )
 
     def classify(self, review_text: str) -> ReviewClassification:
+        """Classify review text based on model star labels.
+
+        Args:
+            review_text: Raw review text to classify.
+
+        Returns:
+            Sentiment classification represented by ``ReviewClassification``.
+
+        Raises:
+            KeyError: If model output misses expected ``label`` key.
+            ValueError: If label does not start with a numeric star value.
+        """
         rate = self._classifier(review_text)[0]
         stars = int(rate["label"][0])
 
@@ -36,5 +64,13 @@ class ReviewClassifier:
 
 @lru_cache
 def get_review_classifier() -> ReviewClassifier:
-    """Return a cached classifier instance to avoid repeated model loads."""
+    """Return a cached classifier instance to avoid repeated model loads.
+
+    Returns:
+        Singleton-like ``ReviewClassifier`` for application runtime.
+
+    Example:
+        >>> isinstance(get_review_classifier(), ReviewClassifier)
+        True
+    """
     return ReviewClassifier()

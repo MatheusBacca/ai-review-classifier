@@ -6,7 +6,17 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Typed settings object for the entire project."""
+    """Typed settings object for the entire project.
+
+    Attributes:
+        database_url: Connection string used by SQLModel engine.
+        huggingface_token: Optional token used to access Hugging Face services.
+
+    Example:
+        >>> settings = Settings(DATABASE_URL="sqlite:///tmp.db")
+        >>> settings.database_url
+        'sqlite:///tmp.db'
+    """
 
     model_config = SettingsConfigDict(
         env_file=".env",

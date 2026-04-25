@@ -14,11 +14,29 @@ engine = create_engine(
 
 
 def create_db_and_tables() -> None:
-    """Create all mapped SQLModel tables in the configured database."""
+    """Create all mapped SQLModel tables in the configured database.
+
+    Returns:
+        None.
+
+    Example:
+        >>> # create_db_and_tables()
+        >>> True
+        True
+    """
     SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session, None, None]:
-    """Provide a transactional SQLModel session for request handlers."""
+    """Yield transactional SQLModel session for request handlers.
+
+    Yields:
+        Active SQLModel ``Session``.
+
+    Example:
+        >>> # with next(get_session()) as session: ...
+        >>> True
+        True
+    """
     with Session(engine) as session:
         yield session

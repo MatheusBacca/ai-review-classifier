@@ -126,3 +126,150 @@ def test_api_report_groups_by_classification(
     assert grouped.get(ReviewClassification.negativa.value, 0) == expected_grouped[
         ReviewClassification.negativa.value
     ]
+
+
+def test_api_create_review_rejects_empty_review_text(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    payload = {
+        "customer_name": "Cliente sem texto",
+        "review_date": "2026-04-25T10:00:00",
+        "review_text": "",
+    }
+
+    response = client.post("/reviews", json=payload)
+
+    assert response.status_code == 422
+    errors = response.json()["detail"]
+    assert any(error["loc"][-1] == "review_text" for error in errors)
+
+
+def test_api_list_reviews_rejects_invalid_date_range(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    response = client.get(
+        "/reviews",
+        params={
+            "start_date": "2026-04-30T23:59:59",
+            "end_date": "2026-04-01T00:00:00",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "start_date must be less than or equal to end_date."
+
+
+def test_api_get_review_by_id_returns_404_when_not_found(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    response = client.get("/reviews/999999")
+
+    assert response.status_code == 404
+    assert "Review not found" in response.json()["detail"]
+
+
+def test_api_create_review_rejects_whitespace_only_review_text(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    payload = {
+        "customer_name": "Cliente sem conteudo",
+        "review_date": "2026-04-25T10:00:00",
+        "review_text": "   ",
+    }
+
+    response = client.post("/reviews", json=payload)
+
+    assert response.status_code == 422
+    assert any(error["loc"][-1] == "review_text" for error in response.json()["detail"])
+
+
+def test_api_create_review_rejects_whitespace_only_customer_name(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    payload = {
+        "customer_name": "   ",
+        "review_date": "2026-04-25T10:00:00",
+        "review_text": "Texto valido",
+    }
+
+    response = client.post("/reviews", json=payload)
+
+    assert response.status_code == 422
+    assert any(error["loc"][-1] == "customer_name" for error in response.json()["detail"])
+
+
+def test_api_list_reviews_rejects_malformed_start_date(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    response = client.get(
+        "/reviews",
+        params={
+            "start_date": "not-a-date",
+            "end_date": "2026-04-01T00:00:00",
+        },
+    )
+
+    assert response.status_code == 422
+
+
+def test_api_report_rejects_invalid_date_range(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    response = client.get(
+        "/reviews/report",
+        params={
+            "start_date": "2026-05-10T00:00:00",
+            "end_date": "2026-05-01T00:00:00",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "start_date must be less than or equal to end_date."
+
+
+def test_api_get_review_by_id_returns_404_when_filtered_out_by_period(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    create_payload = {
+        "customer_name": "Cliente filtro",
+        "review_date": "2026-04-10T08:00:00",
+        "review_text": "Atendimento excelente.",
+    }
+    created = client.post("/reviews", json=create_payload)
+    assert created.status_code == 201
+    review_id = created.json()["id"]
+
+    response = client.get(
+        f"/reviews/{review_id}",
+        params={
+            "start_date": "2026-04-11T00:00:00",
+            "end_date": "2026-04-12T23:59:59",
+        },
+    )
+
+    assert response.status_code == 404
+    assert "Review not found" in response.json()["detail"]
