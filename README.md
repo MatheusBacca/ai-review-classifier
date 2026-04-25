@@ -17,6 +17,7 @@ classifica o sentimento e persiste os dados para consultas e relatorios.
 - **Testes:** Pytest, FastAPI TestClient, fixtures/mocks com monkeypatch
 - **Qualidade de codigo:** Black
 - **Config:** pydantic-settings com variaveis em `.env`
+- **Observabilidade:** logging estruturado JSON com rotacao de arquivos e request-id
 
 ## Requisitos
 
@@ -79,6 +80,10 @@ Variáveis atualmente utilizadas pelo projeto:
 
 - `DATABASE_URL`: string de conexão com PostgreSQL usada pelo SQLModel.
 - `HUGGINGFACE_TOKEN`: (opcional) token de acesso ao hugging face hub para melhor experiência com o modelo de análise de sentimento utilizado.
+- `LOG_LEVEL`: nivel de log da aplicacao (ex.: `INFO`, `DEBUG`).
+- `LOG_DIRECTORY`: pasta onde os arquivos de log serao gravados.
+- `LOG_ROTATION_MAX_MB`: tamanho maximo por arquivo de log antes de rotacionar.
+- `LOG_BACKUP_COUNT`: quantidade maxima de arquivos rotacionados mantidos (limite de 10).
 
 ## Executando a API
 
@@ -89,6 +94,28 @@ uvicorn app.main:app --reload
 Documentação automática:
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - ReDoc: <http://127.0.0.1:8000/redoc>
+
+## Logging estruturado
+
+O projeto possui middleware HTTP para logs de entrada e saida de requisicoes, com:
+
+- metodo, endpoint, query params, path params e headers sanitizados;
+- body da requisicao (quando aplicavel, com truncamento para payloads grandes);
+- status de resposta, duracao da request e metadados de processo/thread;
+- correlacao por request-id em todos os logs.
+
+### Idempotency ID / Request ID
+
+- a API aceita os headers `Idempotency-Key`, `X-Idempotency-Key` e `X-Request-Id`;
+- se nenhum for enviado, um UUID e gerado automaticamente;
+- o id utilizado volta no header de resposta `X-Request-Id`;
+- o mesmo id e registrado nos logs para rastreabilidade ponta a ponta.
+
+### Rotacao de arquivos de log
+
+- os logs sao escritos em JSON no arquivo `logs/application.log`;
+- a rotacao ocorre ao atingir `LOG_ROTATION_MAX_MB`;
+- sao mantidos no maximo `LOG_BACKUP_COUNT` arquivos (ate 10).
 
 ## Formatação com Black (PEP8)
 
