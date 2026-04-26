@@ -103,9 +103,9 @@ Comandos usuais:
 
 O ficheiro `alembic/env.py` importa `settings` da aplicação: a URL usada é a mesma que `DATABASE_URL` no `.env`. As revisões ficam em `alembic/versions/`. Para `revision --autogenerate`, as tabelas SQLModel têm de estar no metadata (por exemplo, exportando-as em `app/models/__init__.py`, pois o `env.py` importa o pacote `app.models`).
 
-### Atalho no Windows: `aplicar-migracoes-banco.bat`
+### Atalho no Windows: `apply_migrations.bat`
 
-Na raiz do projeto, o ficheiro **`aplicar-migracoes-banco.bat`** executa o mesmo que `alembic upgrade head`, preferindo o Python do `.venv` se existir. Pode fazer duplo clique (na pasta do projeto) ou chamar a partir de `cmd` / PowerShell. O script termina com o código de saída do Alembic; em falhas, verifique o `.env` e a conexão ao PostgreSQL.
+Na raiz do projeto, o ficheiro **`apply_migrations.bat`** executa o mesmo que `alembic upgrade head`, preferindo o Python do `.venv` se existir. Pode fazer duplo clique (na pasta do projeto) ou chamar a partir de `cmd` / PowerShell. O script termina com o código de saída do Alembic; em falhas, verifique o `.env` e a conexão ao PostgreSQL.
 
 Nos testes, continua a ser usado SQLite em memória com criação de tabelas via `SQLModel.metadata.create_all` apenas no âmbito dos testes; produção fica a cargo do Alembic.
 
@@ -143,6 +143,8 @@ O projeto possui middleware HTTP para logs de entrada e saida de requisicoes, co
 
 ## Formatação com Black (PEP8)
 
+O projeto tem configuração de pre-commit para garantir a formatação PEP8 com Black.
+
 ```bash
 black app
 ```
@@ -151,10 +153,10 @@ black app
 
 Estrutura modular atual:
 
+- `alembic/`: configuração e revisões de migration (PostgreSQL)
 - `app/main.py`: app factory (`create_app`) e instância `app`
 - `app/routes/`: roteadores HTTP (ex.: `reviews.py`)
 - `app/database/`: engine e sessões SQLModel
-- `alembic/`: configuração e revisões de migration (PostgreSQL)
 - `app/config/`: configurações e objeto único `settings`
 - `app/models/`: modelos SQLModel/Pydantic
 - `app/utils/`: utilitários compartilhados (ex.: enums)
@@ -190,7 +192,7 @@ Exemplo de body:
 ```
 
 ### `GET /reviews`
-Lista reviews com paginação e filtros opcionais de período.
+Lista reviews com paginação e filtros opcionais de período e classificação.
 
 **Query**
 
@@ -261,6 +263,12 @@ Exemplo:
 GET /reviews/report?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59&classification=neutra
 ```
 
+## Ordenacao dos resultados (APIs de leitura)
+
+- **`GET /reviews`**: sem `start_date` e sem `end_date`, a lista e ordenada por **`id`** ascendente. Se **qualquer** filtro de data for informado (inicial e/ou final), a ordenacao passa a ser por **`review_date`** ascendente e, em empate, por **`id`** ascendente. O filtro opcional `classification` **so** restringe quais entram na lista, sem mudar a regra de ordenacao acima.
+- **`GET /reviews/{id}`**: devolve um unico registo; nao ha lista ordenada.
+- **`GET /reviews/report`**: o array `by_classification` vem ordenado de forma estavel: sem filtro de data, por **`MIN(id)`** dentro de cada classificacao (fica deterministica a ordem dos grupos); com filtro de data, por **`MIN(review_date)`** e depois nome da classificacao.
+
 ## Testes unitarios com pytest
 
 Os testes foram organizados para validar as principais funcionalidades do servico:
@@ -330,9 +338,3 @@ Arquivo: `tests/conftest.py`
 - `client`: `TestClient` com override de dependencia `get_session`;
 - `seed_reviews`: carrega dados de `get_seed_reviews()`;
 - `fake_classifier`: mock deterministico para o classificador.
-
-## Ordenacao dos resultados (APIs de leitura)
-
-- **`GET /reviews`**: sem `start_date` e sem `end_date`, a lista e ordenada por **`id`** ascendente. Se **qualquer** filtro de data for informado (inicial e/ou final), a ordenacao passa a ser por **`review_date`** ascendente e, em empate, por **`id`** ascendente. O filtro opcional `classification` **so** restringe quais entram na lista, sem mudar a regra de ordenacao acima.
-- **`GET /reviews/{id}`**: devolve um unico registo; nao ha lista ordenada.
-- **`GET /reviews/report`**: o array `by_classification` vem ordenado de forma estavel: sem filtro de data, por **`MIN(id)`** dentro de cada classificacao (fica deterministica a ordem dos grupos); com filtro de data, por **`MIN(review_date)`** e depois nome da classificacao.
