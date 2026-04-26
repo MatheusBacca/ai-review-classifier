@@ -7,7 +7,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.config import configure_logging
-from app.database import create_db_and_tables
 from app.middleware.logging import RequestLoggingMiddleware
 from app.routes.reviews import router as reviews_router
 
@@ -27,7 +26,7 @@ async def lifespan(_: FastAPI):
         >>> True
         True
     """
-    create_db_and_tables()
+    # Schema is applied with Alembic (`alembic upgrade head`); do not use create_all here.
     yield
 
 

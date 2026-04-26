@@ -47,6 +47,7 @@ def session() -> Generator[Session, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
+    # Test DB: in-memory SQLite; production schema is managed with Alembic on PostgreSQL.
     SQLModel.metadata.create_all(engine)
     with Session(engine) as db_session:
         yield db_session

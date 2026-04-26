@@ -55,7 +55,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             "request_id": request_id,
             "body": await self._extract_request_body(request),
         }
-        LOGGER.info("Incoming HTTP request.", extra={"event": "http_request_in", "http": request_payload})
+        LOGGER.info(
+            "Incoming HTTP request.",
+            extra={"event": "http_request_in", "http": request_payload},
+        )
 
         try:
             response = await call_next(request)
@@ -87,7 +90,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
             "duration_ms": duration_ms,
             "response_headers": self._sanitize_headers(dict(response.headers)),
         }
-        LOGGER.info("Outgoing HTTP response.", extra={"event": "http_request_out", "http": response_payload})
+        LOGGER.info(
+            "Outgoing HTTP response.",
+            extra={"event": "http_request_out", "http": response_payload},
+        )
         reset_request_id(token)
         return response
 

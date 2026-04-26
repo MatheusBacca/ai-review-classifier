@@ -2,7 +2,7 @@
 
 from typing import Generator
 
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, create_engine
 
 from app.config import settings
 
@@ -11,20 +11,6 @@ engine = create_engine(
     echo=False,
     pool_pre_ping=True,
 )
-
-
-def create_db_and_tables() -> None:
-    """Create all mapped SQLModel tables in the configured database.
-
-    Returns:
-        None.
-
-    Example:
-        >>> # create_db_and_tables()
-        >>> True
-        True
-    """
-    SQLModel.metadata.create_all(engine)
 
 
 def get_session() -> Generator[Session, None, None]:

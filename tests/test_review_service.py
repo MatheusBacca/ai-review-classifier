@@ -93,7 +93,9 @@ def test_api_report_groups_by_classification(
         response = client.post("/reviews", json=_create_review_payload(review))
         assert response.status_code == 201
 
-    date_values = [datetime.fromisoformat(review["review_date"]) for review in seed_reviews]
+    date_values = [
+        datetime.fromisoformat(review["review_date"]) for review in seed_reviews
+    ]
     start_date = min(date_values).strftime("%Y-%m-%dT00:00:00")
     end_date = max(date_values).strftime("%Y-%m-%dT23:59:59")
     response = client.get(
@@ -108,7 +110,9 @@ def test_api_report_groups_by_classification(
     report = response.json()
     assert report["total_reviews"] == len(seed_reviews)
 
-    grouped = {item["classification"]: item["total"] for item in report["by_classification"]}
+    grouped = {
+        item["classification"]: item["total"] for item in report["by_classification"]
+    }
     expected_grouped = {
         ReviewClassification.positiva.value: 0,
         ReviewClassification.neutra.value: 0,
@@ -117,15 +121,18 @@ def test_api_report_groups_by_classification(
     for review in seed_reviews:
         expected_grouped[fake_classifier.classify(review["review_text"])] += 1
 
-    assert grouped.get(ReviewClassification.positiva.value, 0) == expected_grouped[
-        ReviewClassification.positiva.value
-    ]
-    assert grouped.get(ReviewClassification.neutra.value, 0) == expected_grouped[
-        ReviewClassification.neutra.value
-    ]
-    assert grouped.get(ReviewClassification.negativa.value, 0) == expected_grouped[
-        ReviewClassification.negativa.value
-    ]
+    assert (
+        grouped.get(ReviewClassification.positiva.value, 0)
+        == expected_grouped[ReviewClassification.positiva.value]
+    )
+    assert (
+        grouped.get(ReviewClassification.neutra.value, 0)
+        == expected_grouped[ReviewClassification.neutra.value]
+    )
+    assert (
+        grouped.get(ReviewClassification.negativa.value, 0)
+        == expected_grouped[ReviewClassification.negativa.value]
+    )
 
 
 def test_api_create_review_rejects_empty_review_text(
@@ -162,7 +169,10 @@ def test_api_list_reviews_rejects_invalid_date_range(
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "start_date must be less than or equal to end_date."
+    assert (
+        response.json()["detail"]
+        == "start_date must be less than or equal to end_date."
+    )
 
 
 def test_api_get_review_by_id_returns_404_when_not_found(
@@ -210,7 +220,9 @@ def test_api_create_review_rejects_whitespace_only_customer_name(
     response = client.post("/reviews", json=payload)
 
     assert response.status_code == 422
-    assert any(error["loc"][-1] == "customer_name" for error in response.json()["detail"])
+    assert any(
+        error["loc"][-1] == "customer_name" for error in response.json()["detail"]
+    )
 
 
 def test_api_list_reviews_rejects_malformed_start_date(
@@ -245,7 +257,10 @@ def test_api_report_rejects_invalid_date_range(
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "start_date must be less than or equal to end_date."
+    assert (
+        response.json()["detail"]
+        == "start_date must be less than or equal to end_date."
+    )
 
 
 def test_api_get_review_by_id_returns_404_when_filtered_out_by_period(
@@ -273,3 +288,31 @@ def test_api_get_review_by_id_returns_404_when_filtered_out_by_period(
 
     assert response.status_code == 404
     assert "Review not found" in response.json()["detail"]
+
+
+def test_api_get_review_by_id_returns_200(
+    client: TestClient,
+    fake_classifier: FakeReviewClassifier,
+    monkeypatch,
+) -> None:
+    _patch_classifier(monkeypatch, fake_classifier)
+    create_payload = {
+        "customer_name": "Cliente API",
+        "review_date": "2026-04-15T14:30:00",
+        "review_text": "Entrega rapida, produto excelente.",
+    }
+    create_response = client.post("/reviews", json=create_payload)
+    assert create_response.status_code == 201
+    created = create_response.json()
+    review_id = created["id"]
+
+    get_api = f"/reviews/{review_id}"
+    get_response = client.get(get_api)
+    assert get_response.status_code == 200, get_api
+
+    body = get_response.json()
+    assert body["id"] == review_id
+    assert body["customer_name"] == create_payload["customer_name"]
+    assert body["review_text"] == create_payload["review_text"]
+    assert body["classification"] == "positiva"
+    assert "2026-04-15" in body["review_date"]

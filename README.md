@@ -12,7 +12,7 @@ classifica o sentimento e persiste os dados para consultas e relatorios.
 - **API/Web:** FastAPI, Starlette, Uvicorn
 - **Modelagem/validacao:** Pydantic v2, SQLModel
 - **Banco de dados:** PostgreSQL (producao) e SQLite em memoria (testes)
-- **ORM/SQL:** SQLAlchemy 2
+- **ORM/SQL:** SQLAlchemy 2, Alembic (migrations)
 - **NLP/IA:** Hugging Face Transformers (modelo multilingual sentiment)
 - **Testes:** Pytest, FastAPI TestClient, fixtures/mocks com monkeypatch
 - **Qualidade de codigo:** Black
@@ -61,7 +61,7 @@ copy .env.axample .env
 cp .env.axample .env
 ```
 
-5. Edite o arquivo `.env` e ajuste as variáveis de ambiente:
+5. Edite o arquivo `.env` e ajuste as variáveis de ambiente (incluindo `DATABASE_URL` com um banco PostgreSQL já existente):
 
 ```env
 # PostgreSQL connection URL used by SQLModel engine.
@@ -70,6 +70,8 @@ DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/reviews_db
 # Optional token da Hugging Face
 HUGGINGFACE_TOKEN=hf_...
 ```
+
+6. Aplique as migrations no PostgreSQL: secção [Migrations com Alembic](#migrations-com-alembic) (garanta que o banco apontado por `DATABASE_URL` existe e está acessível).
 
 As configurações são carregadas por um objeto único `settings` em
 `app/config.py`, usando `BaseSettings` e `SettingsConfigDict`.
@@ -84,6 +86,28 @@ Variáveis atualmente utilizadas pelo projeto:
 - `LOG_DIRECTORY`: pasta onde os arquivos de log serao gravados.
 - `LOG_ROTATION_MAX_MB`: tamanho maximo por arquivo de log antes de rotacionar.
 - `LOG_BACKUP_COUNT`: quantidade maxima de arquivos rotacionados mantidos (limite de 10).
+
+## Migrations com Alembic
+
+O esquema do PostgreSQL **não** é criado no arranque da API. Use o Alembic a partir da raiz do repositório (com o venv ativo e `DATABASE_URL` válido no `.env`). Exemplo: python -m <...comando>
+
+Comandos usuais:
+
+| Objetivo | Comando |
+| --- | --- |
+| Aplicar todas as pendentes | `alembic upgrade head` |
+| Reverter um passo | `alembic downgrade -1` |
+| Ver a revisão atual | `alembic current` |
+| Histórico de revisões | `alembic history` |
+| Criar uma nova migration (a partir do modelo) | `alembic revision --autogenerate -m "descricao curta"` |
+
+O ficheiro `alembic/env.py` importa `settings` da aplicação: a URL usada é a mesma que `DATABASE_URL` no `.env`. As revisões ficam em `alembic/versions/`. Para `revision --autogenerate`, as tabelas SQLModel têm de estar no metadata (por exemplo, exportando-as em `app/models/__init__.py`, pois o `env.py` importa o pacote `app.models`).
+
+### Atalho no Windows: `aplicar-migracoes-banco.bat`
+
+Na raiz do projeto, o ficheiro **`aplicar-migracoes-banco.bat`** executa o mesmo que `alembic upgrade head`, preferindo o Python do `.venv` se existir. Pode fazer duplo clique (na pasta do projeto) ou chamar a partir de `cmd` / PowerShell. O script termina com o código de saída do Alembic; em falhas, verifique o `.env` e a conexão ao PostgreSQL.
+
+Nos testes, continua a ser usado SQLite em memória com criação de tabelas via `SQLModel.metadata.create_all` apenas no âmbito dos testes; produção fica a cargo do Alembic.
 
 ## Executando a API
 
@@ -129,7 +153,8 @@ Estrutura modular atual:
 
 - `app/main.py`: app factory (`create_app`) e instância `app`
 - `app/routes/`: roteadores HTTP (ex.: `reviews.py`)
-- `app/database/`: engine, sessões e criação de tabelas
+- `app/database/`: engine e sessões SQLModel
+- `alembic/`: configuração e revisões de migration (PostgreSQL)
 - `app/config/`: configurações e objeto único `settings`
 - `app/models/`: modelos SQLModel/Pydantic
 - `app/utils/`: utilitários compartilhados (ex.: enums)
