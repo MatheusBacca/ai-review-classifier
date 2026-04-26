@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     )
 
     huggingface_token: Optional[str] = Field(
+        default=None,
         alias="HUGGINGFACE_TOKEN",
         description="Token da Hugging Face.",
     )
