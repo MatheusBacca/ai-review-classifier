@@ -190,39 +190,75 @@ Exemplo de body:
 ```
 
 ### `GET /reviews`
-Lista reviews com filtros opcionais de período:
+Lista reviews com paginação e filtros opcionais de período.
 
-- `start_date` (datetime)
-- `end_date` (datetime)
+**Query**
+
+- `start_date` (datetime, opcional)
+- `end_date` (datetime, opcional)
+- `classification` (opcional): `positiva` \| `neutra` \| `negativa` — restringe aos registos com essa classificacao de sentimento; se omitir, nao se filtra por classificacao.
+- `page` (inteiro, ≥ 1, padrão: `1`)
+- `limit` (inteiro entre **50 e 200**, padrão: `50`)
+
+**Resposta**
+
+- `items`: lista de reviews (objetos com os mesmos campos que em `GET /reviews/{id}`).
+- `pagination`: metadados com `page`, `itens` (quantidade de linhas **nesta** página), `total` (total de reviews que batem com os **filtros** de datas e, se usado, de classificação) e `last_page` (última página com dados, ou `0` se `total` for 0).
 
 Exemplo:
 
 ```bash
-GET /reviews?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59
+GET /reviews?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59&page=1&limit=50
 ```
 
+Exemplo de corpo JSON (simplificado):
+
+```json
+{
+  "items": [
+    {
+      "id": 1,
+      "customer_name": "Daiane",
+      "review_date": "2026-04-20T10:00:00",
+      "review_text": "Ótimo.",
+      "classification": "positiva"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "itens": 1,
+    "total": 42,
+    "last_page": 1
+  }
+}
+```
+
+Na listagem aplicam-se os filtros de data e de classificacao (quando existirem) e, em seguida, a paginação. `GET /reviews/{id}` (registro unico) e `GET /reviews/report` (agregado) nao usam `page` / `limit` (mas suportam `classification` e datas como acima).
+
 ### `GET /reviews/{id}`
-Retorna uma review por ID com os mesmos filtros opcionais de período:
+Retorna uma review por ID. Query opcionais (combináveis):
 
 - `start_date` (datetime)
 - `end_date` (datetime)
+- `classification` (`positiva` \| `neutra` \| `negativa`): o registo tem de corresponder a essa classificacao; caso contrario responde `404` (igual a “nao existir” para o id com os restantes filtros).
 
 Exemplo:
 
 ```bash
-GET /reviews/1?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59
+GET /reviews/1?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59&classification=positiva
 ```
 
 ### `GET /reviews/report`
-Retorna um relatório agregado por classificação no período informado:
+Retorna um relatório agregado por classificação. Query opcionais:
 
 - `start_date` (datetime)
 - `end_date` (datetime)
+- `classification` (opcional): com este parâmetro, entram no relatório **apenas** reviews com essa classificacao; `by_classification` passa a refletir só esse corte (habitualmente **um** grupo) e `total_reviews` é o total com os mesmos filtros.
 
 Exemplo:
 
 ```bash
-GET /reviews/report?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59
+GET /reviews/report?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59&classification=neutra
 ```
 
 ## Testes unitarios com pytest
@@ -230,7 +266,7 @@ GET /reviews/report?start_date=2026-04-01T00:00:00&end_date=2026-04-30T23:59:59
 Os testes foram organizados para validar as principais funcionalidades do servico:
 
 - Inserção de review no banco (SQLite em memoria para nao depender do Postgres local);
-- Leitura com filtros de periodo usados nas APIs;
+- Leitura com filtros de periodo, **classificacao** opcional e **paginacao** (`page`, `limit` 50–200, envelope `pagination`) na listagem;
 - Relatório agregado por classificação;
 - Análise de sentimento do Transformer com pipeline mockado;
 - Validacoes reprovadas de API (payload invalido, datas invalidas e recurso nao encontrado).
@@ -294,3 +330,9 @@ Arquivo: `tests/conftest.py`
 - `client`: `TestClient` com override de dependencia `get_session`;
 - `seed_reviews`: carrega dados de `get_seed_reviews()`;
 - `fake_classifier`: mock deterministico para o classificador.
+
+## Ordenacao dos resultados (APIs de leitura)
+
+- **`GET /reviews`**: sem `start_date` e sem `end_date`, a lista e ordenada por **`id`** ascendente. Se **qualquer** filtro de data for informado (inicial e/ou final), a ordenacao passa a ser por **`review_date`** ascendente e, em empate, por **`id`** ascendente. O filtro opcional `classification` **so** restringe quais entram na lista, sem mudar a regra de ordenacao acima.
+- **`GET /reviews/{id}`**: devolve um unico registo; nao ha lista ordenada.
+- **`GET /reviews/report`**: o array `by_classification` vem ordenado de forma estavel: sem filtro de data, por **`MIN(id)`** dentro de cada classificacao (fica deterministica a ordem dos grupos); com filtro de data, por **`MIN(review_date)`** e depois nome da classificacao.

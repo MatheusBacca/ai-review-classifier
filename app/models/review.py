@@ -120,6 +120,35 @@ class ReviewRead(ReviewBase):
     )
 
 
+class PaginationInfo(SQLModel):
+    """Page metadata for list endpoints.
+
+    Attributes:
+        page: Current page (1-based).
+        itens: Number of reviews returned in this page.
+        total: Total reviews matching the same filters (across all pages).
+        last_page: Highest page with data, or 0 if ``total`` is 0.
+    """
+
+    page: int = Field(description="Current 1-based page number.")
+    itens: int = Field(
+        description="Count of review rows in this page response.",
+    )
+    total: int = Field(
+        description="Total reviews matching the query before pagination.",
+    )
+    last_page: int = Field(
+        description="Last available page, or 0 when total is 0.",
+    )
+
+
+class ReviewListResponse(SQLModel):
+    """List of reviews with pagination envelope."""
+
+    items: list[ReviewRead] = Field(description="Reviews in the current page.")
+    pagination: PaginationInfo
+
+
 class ReviewReportItem(SQLModel):
     """Aggregated quantity grouped by review classification.
 

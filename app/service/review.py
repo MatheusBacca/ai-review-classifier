@@ -6,7 +6,15 @@ from datetime import datetime
 from typing import Optional
 
 from app.database.review import ReviewRepository
-from app.models import Review, ReviewCreate, ReviewRead, ReviewReport, ReviewReportItem
+from app.models import (
+    PaginationInfo,
+    Review,
+    ReviewCreate,
+    ReviewListResponse,
+    ReviewRead,
+    ReviewReport,
+    ReviewReportItem,
+)
 from app.service.transformer import get_review_classifier
 
 
@@ -67,29 +75,59 @@ class ReviewService:
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
-    ) -> list[ReviewRead]:
-        """List all reviews filtered by an optional period.
+        *,
+        classification: Optional[str] = None,
+        page: int = 1,
+        limit: int = 50,
+    ) -> ReviewListResponse:
+        """List reviews for one page, filtered by an optional period.
 
         Args:
             start_date: Optional start datetime for inclusive filtering.
             end_date: Optional end datetime for inclusive filtering.
+            classification: Optional exact match on stored sentiment.
+            page: 1-based page number.
+            limit: Page size (caller enforces 50–200 in HTTP layer).
 
         Returns:
-            Reviews that match optional period bounds.
+            Paged list with matching reviews and ``PaginationInfo``.
 
         Example:
             >>> # service.list_reviews()
             >>> True
             True
         """
-        reviews = self.review_repository.list_reviews(start_date, end_date)
-        return [ReviewRead.model_validate(review) for review in reviews]
+        total = self.review_repository.count_reviews(
+            start_date, end_date, classification
+        )
+        reviews = self.review_repository.list_reviews(
+            start_date,
+            end_date,
+            classification,
+            page=page,
+            limit=limit,
+        )
+        items = [ReviewRead.model_validate(review) for review in reviews]
+        if total == 0:
+            last_page = 0
+        else:
+            last_page = (total + limit - 1) // limit
+        return ReviewListResponse(
+            items=items,
+            pagination=PaginationInfo(
+                page=page,
+                itens=len(items),
+                total=total,
+                last_page=last_page,
+            ),
+        )
 
     def get_review_by_id(
         self,
         review_id: int,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        classification: Optional[str] = None,
     ) -> ReviewRead:
         """Fetch one review by id or raise domain not found error.
 
@@ -97,6 +135,7 @@ class ReviewService:
             review_id: Numeric identifier of desired review.
             start_date: Optional start datetime for filtering.
             end_date: Optional end datetime for filtering.
+            classification: Optional exact match on stored sentiment.
 
         Returns:
             Matching persisted review.
@@ -109,21 +148,27 @@ class ReviewService:
             >>> True
             True
         """
-        review = self.review_repository.get_by_id(review_id, start_date, end_date)
+        review = self.review_repository.get_by_id(
+            review_id, start_date, end_date, classification
+        )
         if review is None:
-            raise ReviewNotFoundError("Review not found for given id and date filters.")
+            raise ReviewNotFoundError(
+                "Review not found for the given id and read filters (dates and/or classification)."
+            )
         return ReviewRead.model_validate(review)
 
     def get_reviews_report(
         self,
         start_date: Optional[datetime] = None,
         end_date: Optional[datetime] = None,
+        classification: Optional[str] = None,
     ) -> ReviewReport:
         """Build aggregated report grouped by review classification.
 
         Args:
             start_date: Optional start datetime for report interval.
             end_date: Optional end datetime for report interval.
+            classification: When set, only that sentiment is included.
 
         Returns:
             Aggregated counts and total reviews for selected range.
@@ -136,6 +181,7 @@ class ReviewService:
         total_reviews, grouped_data = self.review_repository.get_report(
             start_date,
             end_date,
+            classification,
         )
         by_classification = [
             ReviewReportItem(classification=classification, total=total)
